@@ -1,0 +1,22 @@
+---QUESTION 2---
+
+I found the described liquidation vulnerability interesting because when I was writing the liquidation mechanism for the original Tracer Perp swaps protocol, we tried to create "riskless" liquidations where the liquidator would be compensated if the price they sold at was lower than the price at time of liquidation (if market selling shortly after liquidating).
+
+Some of my initial ideas when reading through the notion doc:
+- Somehow use the Insurance fund `borrow()` function to drain the insurance fund when Vault can't pay out user.
+	- I don't think this would work because this only gets executed when withdrawing from vault and I couldn't think of a way to "fake" any liquidity here.
+	- Then I thought "Could I gain temporary liquidity (flashloan), open a position, manipulate market price, and somehow exploit it from this angle?" but I don't think this would be possible within one block and I wasn't entirely clear whether this would even yield any profit anyway.
+- I then wanted to confirm the pricing and how it calculates the "liquidatable-ness" of an account.
+	- It seemed OK so I moved on.
+
+Then I began thinking about how with market-selling underwater accounts, liquidators weren't required to put up any collateral in order to perform the liquidation. This seemed unintuitive from my past experience designing liquidation mechanisms so I tried to think more about it.
+
+I was on a bit of a time crunch because it was Friday morning and I was supposed to be submitting this today, so I took the pragmatic approach and decided to try to explain how I would approach solving this, rather than writing up PoC script(s)/contract(s).
+
+My current thought process is that the price pressure from liquidations and their subsequent market selling could induce states of bad debt, and the insurance fund payments mechanism could be exploited in some way here. But it seems that according to this section of the liquidation flow (https://github.com/perpetual-protocol/perp-curie-contract/blob/b57b2cb4cc80f55e5b54abc19e3255f3df7aee9b/contracts/ClearingHouse.sol#L892-L898) liquidations cannot occur if bad debt results, except if being done by a permissioned liquidator. I am operating under the assumption that the permissioned liquidators are not malicious so this wouldn't work.
+
+I got kind of stumped at this point and didn't want to submit this response too late, so I decided I would choose a naive/simply market exploit as my "final submission". I am aware that this is wrong, because it requires the manipulation of an oracle. Since Perpetual Protocol uses Chainlink oracles this would be an incredibly hard task and would therefore require too much upfront capital to be a viable attack:
+
+Since the liquidator gets a fee reward, which seems to equal the notional value of the liquidated account multiplied by some ratio. Therefore, a malicious liquidator bot could theoretically manipulate oracle price, causing positions to become liquidatable, and once their position is market sold, the liquidator gets the fee reward and potentially can drain a certain amount of funds through this mechanism. This could likely be coordinated with bad debt somehow to then allow the liquidator to enter this branch (https://github.com/perpetual-protocol/perp-curie-contract/blob/9a3055d9ae59682f09d090972013db0c568cdf03/contracts/Vault.sol#L647-L651) when withdrawing funds to drain the insurance pool.
+
+Again, I know this isn't the exact answer you were looking for, but I hope my writing has still given an insight into my thought process and would love the opportunity to explore this problem in more detail!

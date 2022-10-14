@@ -1,0 +1,25 @@
+---QUESTION 1---
+
+
+Initially, the first formula seemed much more intuitive to me. It simply gets the lowest of `totalCollateral` and `accountValue`, then subtract the amount they are required to keep deposited. The second formula looks at both total collateral value and then account value minus total margin requirement. My first thought here was why not do `min(totalCollateralValue - totalMarginRequirement, accountValue - totalMarginRequirement)` but then I quickly realised this is the same as the first formula.
+
+From this, I realised that a big difference between the two formulas is if accountValue > totalCollateralValue, but subtracting totalMarginRequirement brings it below, it will choose that as the withdrawable amount. Is this really an issue, since this will mean a lower withdrawable amount and thus lower chance of entering a state of illiquidity? (I quickly realised this formula does not at all guarantee a lower-valued result).
+
+Moving on from a direct comparison, I switched focus to the actual question posed. Is it possible for one of these to return a greater amount than total system collateral?
+
+After thinking about it for a short while I realised the second formula would likely start acting weirdly in certain situations due to the fact that `withdrawableValue` can theoretically equal `totalCollateralValue`, but this formula would ideally always only allow you to withdraw up until your total margin requirement.
+Take the example where
+Collateral = 20
+unrealised PnL = 70
+Account value = 20 + 70 = 90
+Total margin requirement = 10 (the user has notional value of 100 and is thus 100/20 = 5x leveraged).
+Formula 2 gives 20 as a result, which would be a withdrawal into a liquidatable position and *should* be invalid.
+
+I'm not sure if this is the invalid state that the question is asking for, since the question is worded in a way that implies I should be looking for a way to have withdrawableAmount > user collateral, but I don't think that's possible, because as soon as the user's PnL becomes a large enough negative number, withdrawable amount begins to decrease enough below the user's total collateral value to avoid such a state.
+
+Nonetheless, Formula 2 (`min(totalCollateralValue, accountValue - totalMarginRequirement)`) still seems incorrect.
+Formula 1 looks correct simply because you are always taking the difference of the lower of the two and the user's total margin requirement which always reserves enough for a user to remain above water.
+
+It is also likely that I am not taking in enough context to answer this question adequately. Being admittedly quite new to the concept of AMMs as the underlying mechanism for leveraged perpetuals (only working with CLOB and total return swap mechanisms), I don't yet fully grasp all the necessary details of the function of liquidity provision and so on within this protocol. I would not be surprised if their is an important nuance that I am missing. 
+
+
